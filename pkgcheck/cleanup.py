@@ -55,8 +55,14 @@ class RedundantVersionReport(Template):
             if not curr_set:
                 continue
 
-            matches = [ver for ver, keys in stack if ver.slot == pkg.slot
-                       and not curr_set.difference(keys)]
+            masked = 0
+            for masked_atom in self.options.target_repo.default_visibility_limiters:
+                if masked_atom.match(pkg.versioned_atom):
+                    masked = 1
+                    break
+
+            matches = [ver for ver, keys, pkg_masked in stack if ver.slot == pkg.slot
+                       and not curr_set.difference(keys) and masked >= pkg_masked]
 
             # we've done our checks; now we inject unstable for any stable
             # via this, earlier versions that are unstable only get flagged
@@ -64,9 +70,9 @@ class RedundantVersionReport(Template):
             # stable.
 
             # also, yes, have to use list comp here- we're adding as we go
-            curr_set.update(["~"+x for x in curr_set if not x.startswith("~")])
+            curr_set.update(["~" + x for x in curr_set if not x.startswith("~")])
 
-            stack.append([pkg, curr_set])
+            stack.append([pkg, curr_set, masked])
             if matches:
                 bad.append((pkg, matches))
 
